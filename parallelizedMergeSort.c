@@ -2,29 +2,115 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <time.h>
-#include <bits/time.h>
 
+#define MAX_THREADS 8
+#define THRESHOLD 100000
+
+typedef struct {
+    int* arr;
+    int l;
+    int r;
+} SortArgs;
+
+void* mergeSortThread(void* arg);
+void mergeSort(int* arr, int l, int r);
 void fillArray(int arr[], int n);
-void mergeSort(int arr[], int l, int r);
 void merge(int arr[], int l, int m, int r);
+int min(int x, int y);
 
 int main() {
-    int arr[1000000]; // Consider increasing this if needed
-    fillArray(arr, sizeof(arr)/sizeof(arr[0]));
+    int arr[1000000];
+    fillArray(arr, sizeof(arr) / sizeof(arr[0]));
 
     struct timespec start, end;
     double elapsed;
 
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    mergeSort(arr, 0, sizeof(arr)/sizeof(arr[0]) - 1);
+    // Initial call to merge sort now wrapped in SortArgs
+    SortArgs args = {arr, 0, sizeof(arr) / sizeof(arr[0]) - 1};
+    mergeSortThread(&args);
 
     clock_gettime(CLOCK_MONOTONIC, &end);
 
     elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1E9;
-    printf("Time taken to sort the array: %.6f seconds\n", elapsed);
+    printf("Time taken to sort the array in parallel: %.6f seconds\n", elapsed);
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    mergeSort(arr, 0, sizeof(arr) / sizeof(arr[0]) - 1);
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1E9;
+    printf("Time taken to sort the array sequentially: %.6f seconds\n", elapsed);
 
     return 0;
+}
+
+// function to find the minimum of two numbers
+// @param x: first number
+// @param y: second number
+// @return minimum of the two numbers
+// *
+// *
+// *
+int min(int x, int y) { 
+    return x < y ? x : y; 
+}
+
+// function to sort the array using merge sort
+// @param arg: pointer to the SortArgs struct
+// @return void
+// *
+// *
+// *
+void* mergeSortThread(void* arg) {
+    SortArgs* args = (SortArgs*)arg;
+    int l = args->l;
+    int r = args->r;
+    int* arr = args->arr;
+
+    if (l < r) {
+        int m = l + (r - l) / 2;
+
+        if ((r - l) > THRESHOLD) { // Only parallelize if the segment is large enough
+            pthread_t threads[2];
+            SortArgs args1 = {arr, l, m};
+            SortArgs args2 = {arr, m + 1, r};
+
+            pthread_create(&threads[0], NULL, mergeSortThread, &args1);
+            pthread_create(&threads[1], NULL, mergeSortThread, &args2);
+
+            pthread_join(threads[0], NULL);
+            pthread_join(threads[1], NULL);
+        } else {
+            mergeSort(arr, l, m);
+            mergeSort(arr, m + 1, r);
+        }
+
+        merge(arr, l, m, r);
+    }
+
+    return NULL;
+}
+
+// function to sort the array using merge sort
+// @param arr[]: array to be sorted
+// @param l: left index
+// @param r: right index
+// @return void
+// *
+// *
+// *
+void mergeSort(int* arr, int l, int r) {
+    if (l < r) {
+        int m = l + (r - l) / 2;
+
+        mergeSort(arr, l, m);
+        mergeSort(arr, m + 1, r);
+        merge(arr, l, m, r);
+    }
 }
 
 // function to fill the array with random numbers
@@ -37,25 +123,6 @@ int main() {
 void fillArray(int arr[], int n) {
     for (int i = 0; i < n; i++) {
         arr[i] = rand() % 100;
-    }
-}
-
-
-// function to merge sort
-// @param arr[]: array to be sorted
-// @param l: left index
-// @param r: right index
-// @return void
-// *
-// *
-// *
-void mergeSort(int arr[], int l, int r) {
-    if (l < r) {
-        int m = l + (r - l) / 2;
-
-        mergeSort(arr, l, m);
-        mergeSort(arr, m + 1, r);
-        merge(arr, l, m, r);
     }
 }
 
