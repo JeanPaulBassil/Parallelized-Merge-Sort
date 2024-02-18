@@ -1,34 +1,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <time.h>
+#include <bits/time.h>
 
 void fillArray(int arr[], int n);
 void mergeSort(int arr[], int l, int r);
 void merge(int arr[], int l, int m, int r);
 
 int main() {
-    // array of 100 elements
-    int arr[100];
+    int arr[1000000]; // Consider increasing this if needed
+    fillArray(arr, sizeof(arr)/sizeof(arr[0]));
 
-    // fill the array with random numbers
-    fillArray(arr, 100);
+    struct timespec start, end;
+    double elapsed;
 
-    // print the unsorted array
-    printf("Unsorted array: ");
-    for (int i = 0; i < 100; i++) {
-        printf("%d ", arr[i]);
-    }
-    printf("\n");
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
-    // sort the array
-    mergeSort(arr, 0, 99);
+    mergeSort(arr, 0, sizeof(arr)/sizeof(arr[0]) - 1);
 
-    // print the sorted array
-    printf("Sorted array: ");
-    for (int i = 0; i < 100; i++) {
-        printf("%d ", arr[i]);
-    }
-    printf("\n");
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1E9;
+    printf("Time taken to sort the array: %.6f seconds\n", elapsed);
 
     return 0;
 }
